@@ -14,6 +14,42 @@ type Sudoku struct {
     legalMovesMask []int
 }
 
+
+func New(baseNumbers int) *Sudoku {
+    sudoku := BuildFullValidGrid(3)
+    cellCount := len(sudoku.grid)
+    sudoku.remaining = cellCount - baseNumbers
+    inds := rand.Perm(cellCount)
+    for i:=0 ; i < sudoku.remaining ; i++ {
+        ind := inds[i]
+        sudoku.grid[ind] = 0 
+    }
+    sudoku.legalMovesMask = sudoku.computeLegalMovesMask()
+    return sudoku
+}
+// Build valid grid : 
+// create empty grid
+// for each number n
+// fill all column with number n where legal
+func BuildFullValidGrid(gridSize int) *Sudoku {
+    sudoku := Empty(gridSize) 
+    for v:=1 ; v<=9 ; v++ {
+        for x:=0 ; x<3*gridSize ; x++ {
+            remainingY := rand.Perm(9)
+            for _, y := range remainingY {
+                ind := sudoku.indFromPos(x,y)
+                if sudoku.isLegal(v, ind) {
+                    sudoku.Set(v,x,y)
+                    break
+                }
+            }
+        } 
+    }
+    if sudoku.remaining > 1 {
+        return BuildFullValidGrid(gridSize)
+    }
+    return sudoku
+}
 func Empty(gridSize int) *Sudoku {
     cellCount := 9*gridSize*gridSize
     grid := make([]int, cellCount)
@@ -27,24 +63,8 @@ func Empty(gridSize int) *Sudoku {
     sudoku.legalMovesMask = sudoku.computeLegalMovesMask()
     return sudoku
 }
-func New(baseNumbers int) *Sudoku {
-    sudoku := Empty(3)
-    cellCount := len(sudoku.grid)
-    if baseNumbers > cellCount {
-        panic("Too much base numbers")
-    }
-    sudoku.remaining = cellCount - baseNumbers
-    for baseNumbers >= 0 {
-        ind := rand.Intn(cellCount)
-        val := rand.Intn(10)
-        if sudoku.isLegal(val, ind) && sudoku.grid[ind] == 0 {
-            sudoku.grid[ind] = val
-            sudoku.legalMovesMask = sudoku.computeLegalMovesMask()
-            baseNumbers--
-        }
-    }
-    return sudoku
-}
+
+
 
 
 func (sudoku *Sudoku) Remaining() int {
@@ -59,7 +79,7 @@ func (sudoku *Sudoku) Set(val,x,y int) error {
     if !sudoku.isLegal(val, ind) {
         return fmt.Errorf("This move is illegal")
     }
-    if sudoku.grid[ind] != 0 {
+    if sudoku.grid[ind] == 0 {
         sudoku.remaining--
     }
     sudoku.grid[ind] = val
@@ -89,7 +109,7 @@ func (sudoku *Sudoku) GetSmallestLegalSquare() (x,y int, mask []int) {
     for i, v := range sudoku.legalMovesMask {
         arr := maskToArray(v)
         count := len(arr)
-        legit := (count < vmin && count > 0) || vmin == 10
+        legit := (count < vmin && count > 0)
         if legit {
             ind = i
             vmin = count 
